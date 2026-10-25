@@ -1,4 +1,4 @@
-name: TV ARM64 APK
+name: TV APKs (ARM32, ARM64, x86_64)
 
 on:
   workflow_dispatch:
@@ -38,21 +38,23 @@ jobs:
       - name: Resolve dependencies
         working-directory: simple_live_tv_app
         run: flutter pub get
-      - name: Build ARM64 release APK
+      - name: Build release APKs for all three architectures
         working-directory: simple_live_tv_app
-        run: flutter build apk --release --target-platform android-arm64 --split-per-abi
+        run: flutter build apk --release --split-per-abi
       - name: Verify APK signature and architecture
         run: |
-          APK=simple_live_tv_app/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
           BUILD_TOOLS=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)
-          "$BUILD_TOOLS/apksigner" verify --verbose "$APK"
-          "$BUILD_TOOLS/aapt" dump badging "$APK" | grep -E 'package:|sdkVersion:|targetSdkVersion:|native-code:'
-          sha256sum "$APK" > "$APK.sha256"
+          for ABI in armeabi-v7a arm64-v8a x86_64; do
+            APK="simple_live_tv_app/build/app/outputs/flutter-apk/app-$ABI-release.apk"
+            "$BUILD_TOOLS/apksigner" verify --verbose "$APK"
+            "$BUILD_TOOLS/aapt" dump badging "$APK" | grep -E 'package:|sdkVersion:|targetSdkVersion:|native-code:'
+            sha256sum "$APK" > "$APK.sha256"
+          done
       - uses: actions/upload-artifact@v4
         with:
-          name: tv-arm64-apk
+          name: tv-apks
           path: |
-            simple_live_tv_app/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
-            simple_live_tv_app/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk.sha256
+            simple_live_tv_app/build/app/outputs/flutter-apk/app-*-release.apk
+            simple_live_tv_app/build/app/outputs/flutter-apk/app-*-release.apk.sha256
           if-no-files-found: error
           retention-days: 30
